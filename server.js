@@ -24,8 +24,8 @@ wss.on("connection", (ws) => {
 	ws.on("message", (msg) => {
 		let data = JSON.parse(msg);
 		var kind = data.kind;
-		var message = data.message;
-		var name = data.name;
+		var message = data.message.slice(0, 400);
+		var name = data.name.slice(0, 40);
 		var color = data.color;
 		if(kind !== "chat") return;
 		if(Date.now() - ws.sdata.lastChat < 1000) {
