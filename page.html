@@ -1,0 +1,98 @@
+<html>
+	<head>
+		<title>Simple Websocket Chat</title>
+		<style>
+			.chat {
+ 				border: 5px solid;
+				display: flex;
+				justify-content: center;
+			}
+		</style>
+	</head>
+	<body>
+		<div>
+			<input type="text" id="message">
+			<button id="submit">Send</button>
+		</div>
+		<div class="chat">
+			<div id="chat_window" class="chat_window">
+				<span>Joined</span>
+			</div>
+			<br>
+		</div>
+		<script>
+			const chatWindow = document.getElementById("chat_window");
+			const messageInput = document.getElementById("message");
+			const send = document.getElementById("submit");
+			
+			var nickname = localStorage.getItem("nickname") || "[?]";
+			var color = localStorage.getItem("color") || "#000000";
+			
+			function addMessage(name, message, color) {
+				var msg = document.createElement("div");
+				var nametag = document.createElement("b");
+				var msgArea = document.createElement("span");
+				
+				nametag.innerText = name;
+				if(name === "[Server]") nametag.style.backgroundColor = "#DDDDDD";
+				nametag.style.color = color || "#000000";
+				
+				msgArea.innerText = `: ${message}`;
+				
+				msg.appendChild(nametag);
+				msg.appendChild(msgArea);
+				chatWindow.appendChild(msg);
+			};
+			
+			var ws_functions = {
+				"server": function(data) {
+					addMessage("[Server]", data.message, "#DD0000");
+				},
+				
+				"chat": function(data) {
+					addMessage(data.name, data.message, data.color);
+				}
+			};
+			
+			var socket = new WebSocket("ws://localhost:8080");
+			socket.onmessage = function(msg) {
+				var data = JSON.parse(msg.data);
+				var kind = data.kind;
+				if(ws_functions[kind]) ws_functions[kind](data);
+			};
+			
+			var com = {
+				nick: function(args) {
+					nickname = args.join(" ");
+					localStorage.setItem("nickname", nickname);
+					addMessage("[Client]", `Nickname set to "${nickname}"`, "#0000DD");
+				},
+				
+				color: function(args) {
+					color = args[0];
+					localStorage.setItem("color", color);
+					addMessage("[Client]", `Color set to ${color}`, "#0000DD");
+				}
+			};
+			
+			send.onclick = function() {
+				if(!messageInput.value) return;
+				if(messageInput.value.startsWith("/")) {
+					var commandList = messageInput.value.split(" ");
+					if(com[commandList[0].slice(1)]) {
+						com[commandList[0].slice(1)](commandList.splice(1));
+					};
+					messageInput.value = "";
+					return;
+				}
+				socket.send(JSON.stringify({
+					kind: "chat",
+					message: messageInput.value,
+					color: color,
+					name: nickname
+				}));
+				messageInput.value = "";
+			}
+		</script>
+	</body>
+</html>
